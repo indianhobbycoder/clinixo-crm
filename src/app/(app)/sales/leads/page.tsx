@@ -2,7 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { LeadPriority, LeadStage } from "@/lib/supabase/database.types";
+import { LeadsFilters } from "./leads-filters";
+import type { LeadPriority, LeadStage, Profile } from "@/lib/supabase/database.types";
 
 const STAGE_LABEL: Record<LeadStage, string> = {
   new: "New",
@@ -26,6 +27,7 @@ interface SearchParams {
   priority?: string;
   state?: string;
   speciality?: string;
+  owner?: string;
   q?: string;
 }
 
@@ -57,9 +59,20 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   if (params.state) query = query.eq("state", params.state);
   if (params.speciality) query = query.eq("speciality", params.speciality);
   if (params.q) query = query.ilike("clinic_name", `%${params.q}%`);
+  if (params.owner === "unassigned") query = query.is("owner_id", null);
+  else if (params.owner) query = query.eq("owner_id", params.owner);
 
-  const { data: rawLeads, error } = await query;
+  const [{ data: rawLeads, error }, { data: distinctRows }, { data: reps }] = await Promise.all([
+    query,
+    supabase.from("leads").select("state, speciality"),
+    supabase.from("profiles").select("*").in("role", ["sales_rep", "sales_manager", "admin"]).order("name"),
+  ]);
+
   const leads = rawLeads as unknown as LeadListRow[] | null;
+  const states = Array.from(new Set((distinctRows ?? []).map((r) => r.state).filter((v): v is string => !!v))).sort();
+  const specialities = Array.from(
+    new Set((distinctRows ?? []).map((r) => r.speciality).filter((v): v is string => !!v)),
+  ).sort();
 
   return (
     <div className="space-y-4">
@@ -69,6 +82,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           <p className="text-sm text-muted-foreground">{leads?.length ?? 0} leads shown (max 100)</p>
         </div>
       </div>
+
+      <LeadsFilters states={states} specialities={specialities} reps={(reps ?? []) as Profile[]} />
 
       {error ? (
         <p className="text-sm text-destructive">Failed to load leads: {error.message}</p>
@@ -111,7 +126,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
               {(leads ?? []).length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
-                    No leads yet. Import leads to get started.
+                    No leads match these filters.
                   </TableCell>
                 </TableRow>
               ) : null}

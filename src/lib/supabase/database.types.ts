@@ -40,12 +40,15 @@ export type Lead = {
   updated_at: string;
 };
 
+export type AccountStatus = "active" | "churned";
+
 export type Account = {
   id: string;
   clinic_name: string;
   phone: string;
   plan: string | null;
   mrr: number;
+  status: AccountStatus;
   converted_from_lead_id: string | null;
   sold_by_rep_id: string | null;
   created_at: string;

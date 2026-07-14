@@ -64,6 +64,15 @@ export async function addLeadNote(leadId: string, note: string) {
   revalidatePath(`/sales/leads/${leadId}`);
 }
 
+export async function logLeadCall(leadId: string, note: string) {
+  const session = await getCurrentProfile();
+  if (!session) throw new Error("Not authenticated");
+
+  await logActivity(leadId, session.userId, "call", note.trim() || "Call logged");
+  revalidatePath(`/sales/leads/${leadId}`);
+  revalidatePath("/sales/dashboard");
+}
+
 export async function scheduleDemo(leadId: string, scheduledAt: string) {
   const session = await getCurrentProfile();
   if (!session) throw new Error("Not authenticated");

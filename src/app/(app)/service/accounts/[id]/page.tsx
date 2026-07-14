@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StatusToggle } from "./status-toggle";
 import type { Account, Activity, Ticket } from "@/lib/supabase/database.types";
 
 type AccountWithSoldBy = Account & { sold_by: { name: string } | null };
@@ -28,12 +29,15 @@ export default async function AccountProfilePage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">{account.clinic_name}</h1>
-        <p className="text-sm text-muted-foreground">
-          {account.phone} · Sold by {account.sold_by?.name ?? "-"} · MRR ₹
-          {Number(account.mrr).toLocaleString("en-IN")}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">{account.clinic_name}</h1>
+          <p className="text-sm text-muted-foreground">
+            {account.phone} · Sold by {account.sold_by?.name ?? "-"} · MRR ₹
+            {Number(account.mrr).toLocaleString("en-IN")}
+          </p>
+        </div>
+        <StatusToggle accountId={account.id} status={account.status} />
       </div>
 
       <Tabs defaultValue="sales">

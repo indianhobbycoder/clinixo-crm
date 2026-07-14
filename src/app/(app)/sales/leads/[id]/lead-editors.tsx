@@ -6,7 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { updateLeadStage, updateLeadPriority, updateLeadOwner, addLeadNote, scheduleDemo } from "@/app/(app)/sales/leads/actions";
+import {
+  updateLeadStage,
+  updateLeadPriority,
+  updateLeadOwner,
+  addLeadNote,
+  logLeadCall,
+  scheduleDemo,
+} from "@/app/(app)/sales/leads/actions";
 import type { LeadPriority, LeadStage, Profile } from "@/lib/supabase/database.types";
 
 const STAGES: LeadStage[] = ["new", "contacted", "demo_scheduled", "demo_done", "negotiation", "won", "lost"];
@@ -144,23 +151,43 @@ export function NoteForm({ leadId }: { leadId: string }) {
   return (
     <div className="space-y-2">
       <Textarea placeholder="Log a call, email, or note..." value={value} onChange={(e) => setValue(e.target.value)} />
-      <Button
-        size="sm"
-        disabled={!value.trim() || isPending}
-        onClick={() =>
-          startTransition(async () => {
-            try {
-              await addLeadNote(leadId, value);
-              setValue("");
-              toast.success("Note added");
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : "Failed to add note");
-            }
-          })
-        }
-      >
-        Add note
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          disabled={!value.trim() || isPending}
+          onClick={() =>
+            startTransition(async () => {
+              try {
+                await addLeadNote(leadId, value);
+                setValue("");
+                toast.success("Note added");
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Failed to add note");
+              }
+            })
+          }
+        >
+          Add note
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isPending}
+          onClick={() =>
+            startTransition(async () => {
+              try {
+                await logLeadCall(leadId, value);
+                setValue("");
+                toast.success("Call logged");
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Failed to log call");
+              }
+            })
+          }
+        >
+          Log call
+        </Button>
+      </div>
     </div>
   );
 }

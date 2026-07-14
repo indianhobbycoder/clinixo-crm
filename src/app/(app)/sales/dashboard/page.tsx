@@ -40,6 +40,9 @@ export default async function SalesDashboardPage() {
     { count: followUpsDue },
     { data: openLeads },
     { data: accounts },
+    { count: callsToday },
+    { count: churnedAccounts },
+    { count: totalAccounts },
   ] = await Promise.all([
     supabase.from("leads").select("*", { count: "exact", head: true }),
     supabase.from("leads").select("*", { count: "exact", head: true }).not("owner_id", "is", null),
@@ -51,7 +54,10 @@ export default async function SalesDashboardPage() {
     supabase.from("leads").select("*", { count: "exact", head: true }).eq("stage", "won"),
     supabase.from("leads").select("*", { count: "exact", head: true }).eq("stage", "demo_scheduled").lt("demo_date", now.toISOString()),
     supabase.from("leads").select("deal_value, stage").not("stage", "in", "(won,lost)"),
-    supabase.from("accounts").select("mrr"),
+    supabase.from("accounts").select("mrr, status"),
+    supabase.from("activities").select("*", { count: "exact", head: true }).eq("type", "call").gte("created_at", todayStart),
+    supabase.from("accounts").select("*", { count: "exact", head: true }).eq("status", "churned"),
+    supabase.from("accounts").select("*", { count: "exact", head: true }),
   ]);
 
   const pipelineValue = (openLeads ?? []).reduce((sum, l) => sum + Number(l.deal_value ?? 0), 0);
@@ -66,8 +72,9 @@ export default async function SalesDashboardPage() {
     (sum, l) => sum + Number(l.deal_value ?? 0) * (stageWeights[l.stage as string] ?? 0),
     0,
   );
-  const mrr = (accounts ?? []).reduce((sum, a) => sum + Number(a.mrr ?? 0), 0);
+  const mrr = (accounts ?? []).filter((a) => a.status !== "churned").reduce((sum, a) => sum + Number(a.mrr ?? 0), 0);
   const demoToConversion = demoDoneCount ? Math.round(((wonCount ?? 0) / demoDoneCount) * 100) : 0;
+  const churnRate = totalAccounts ? Math.round(((churnedAccounts ?? 0) / totalAccounts) * 100) : 0;
 
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data: rawRecentTickets } = await supabase
@@ -105,11 +112,13 @@ export default async function SalesDashboardPage() {
         <KpiTile label="Fresh (7d)" value={String(freshLeads ?? 0)} />
         <KpiTile label="Demos today" value={String(demosToday ?? 0)} />
         <KpiTile label="Demos this week" value={String(demosWeek ?? 0)} />
+        <KpiTile label="Calls today" value={String(callsToday ?? 0)} />
         <KpiTile label="Follow-ups due" value={String(followUpsDue ?? 0)} sub="Demo date passed, awaiting result" />
         <KpiTile label="Demo-to-win rate" value={`${demoToConversion}%`} />
         <KpiTile label="Pipeline value" value={currency.format(pipelineValue)} sub="Flat sum, open leads" />
         <KpiTile label="Weighted forecast" value={currency.format(weightedForecast)} sub="Stage-weighted" />
-        <KpiTile label="MRR" value={currency.format(mrr)} sub="Closed-won accounts" />
+        <KpiTile label="MRR" value={currency.format(mrr)} sub="Active accounts" />
+        <KpiTile label="Churn rate" value={`${churnRate}%`} sub={`${churnedAccounts ?? 0} of ${totalAccounts ?? 0} accounts`} />
       </div>
 
       <Card>

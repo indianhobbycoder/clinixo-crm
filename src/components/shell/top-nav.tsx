@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ROLES_WITH_SALES, ROLES_WITH_SERVICE, type Mode } from "@/components/shell/nav-config";
 import type { Profile } from "@/lib/supabase/database.types";
+import type { Reminder } from "@/lib/reminders";
 import { cn } from "@/lib/utils";
 
 function initials(name: string) {
@@ -28,7 +29,7 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-export function TopNav({ profile, mode }: { profile: Profile; mode: Mode }) {
+export function TopNav({ profile, mode, reminders }: { profile: Profile; mode: Mode; reminders: Reminder[] }) {
   const hasSales = ROLES_WITH_SALES.includes(profile.role);
   const hasService = ROLES_WITH_SERVICE.includes(profile.role);
   const showToggle = hasSales && hasService;
@@ -68,12 +69,32 @@ export function TopNav({ profile, mode }: { profile: Profile; mode: Mode }) {
 
       <div className="flex items-center gap-2">
         <Popover>
-          <PopoverTrigger render={<Button variant="ghost" size="icon" aria-label="Notifications" />}>
+          <PopoverTrigger render={<Button variant="ghost" size="icon" className="relative" aria-label="Notifications" />}>
             <Bell className="size-4" />
+            {reminders.length > 0 ? (
+              <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
+                {reminders.length}
+              </span>
+            ) : null}
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80">
             <p className="text-sm font-medium">Notifications</p>
-            <p className="mt-2 text-sm text-muted-foreground">You&apos;re all caught up.</p>
+            {reminders.length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">You&apos;re all caught up.</p>
+            ) : (
+              <div className="mt-2 space-y-1">
+                {reminders.map((reminder) => (
+                  <Link
+                    key={reminder.id}
+                    href={reminder.href}
+                    className="block rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                  >
+                    <p className={reminder.urgent ? "font-medium text-destructive" : "font-medium"}>{reminder.label}</p>
+                    <p className="text-xs text-muted-foreground">{reminder.sub}</p>
+                  </Link>
+                ))}
+              </div>
+            )}
           </PopoverContent>
         </Popover>
 
